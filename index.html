@@ -1,0 +1,453 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Commercial Analytics RTO Dashboard</title>
+    <!-- Add Chart.js library -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/3.7.0/chart.min.js"></script>
+    <style>
+        /* Styles remain unchanged */
+        body {
+            font-family: Arial, sans-serif;
+            background-color: #f2f2f2;
+            margin: 0;
+            padding: 0;
+        }
+
+        .container {
+            max-width: 800px;
+            margin: 20px auto;
+            background-color: #fff;
+            padding: 20px;
+            border-radius: 10px;
+            box-shadow: 0 0 10px rgba(0, 0, 0, 0.1);
+        }
+
+        h1, h2 {
+            color: #0056b3;
+            text-align: center;
+        }
+
+        form {
+            margin-bottom: 20px;
+        }
+
+        label {
+            font-weight: bold;
+        }
+
+        input[type="text"], select, input[type="date"], input[type="submit"] {
+            width: 100%;
+            padding: 10px;
+            margin: 5px 0 10px 0;
+            border: 1px solid #ccc;
+            border-radius: 5px;
+            box-sizing: border-box;
+        }
+
+        input[type="submit"] {
+            background-color: #0056b3;
+            color: #fff;
+            cursor: pointer;
+        }
+
+        input[type="submit"]:hover {
+            background-color: #004080;
+        }
+
+        table {
+            width: 100%;
+            border-collapse: collapse;
+        }
+
+        th, td {
+            padding: 8px;
+            text-align: left;
+            border-bottom: 1px solid #ddd;
+        }
+
+        th {
+            background-color: #0056b3;
+            color: #fff;
+        }
+
+        .export-button, .delete-button {
+            background-color: #4CAF50;
+            color: white;
+            padding: 14px 20px;
+            margin: 8px 0;
+            border: none;
+            cursor: pointer;
+            width: 100%;
+            border-radius: 5px;
+        }
+
+        .export-button:hover, .delete-button:hover {
+            background-color: #45a049;
+        }
+
+        .calendar-container {
+            display: grid;
+            grid-template-columns: repeat(7, 1fr);
+            grid-gap: 5px;
+        }
+
+        .calendar-day {
+            padding: 10px;
+            border: 1px solid #ccc;
+            background-color: #fff;
+            text-align: center;
+            position: relative;
+        }
+
+        .calendar-day.active {
+            background-color: #0056b3;
+            color: #fff;
+        }
+
+        /* Add styles for chart */
+        canvas#dashboardChart {
+            width: 100%;
+            margin-top: 20px;
+            border: 1px solid #ddd;
+            border-radius: 5px;
+        }
+
+        /* Navigation controls */
+        .navigation-controls {
+            display: flex;
+            justify-content: center;
+            margin-bottom: 20px;
+        }
+
+        .navigation-controls button {
+            margin: 0 10px;
+            padding: 10px;
+            background-color: #0056b3;
+            color: #fff;
+            border: none;
+            border-radius: 5px;
+            cursor: pointer;
+        }
+
+        .navigation-controls button:hover {
+            background-color: #004080;
+        }
+    </style>
+    <script>
+        // JavaScript function to create a bar chart
+        function createChart(namesCount) {
+            const ctx = document.getElementById('dashboardChart').getContext('2d');
+            const chart = new Chart(ctx, {
+                type: 'bar',
+                data: {
+                    labels: Object.keys(namesCount),
+                    datasets: [{
+                        label: 'Number of Entries',
+                        data: Object.values(namesCount),
+                        backgroundColor: 'rgba(0, 86, 179, 0.5)',
+                        borderColor: 'rgba(0, 86, 179, 1)',
+                        borderWidth: 1
+                    }]
+                },
+                options: {
+                    scales: {
+                        y: {
+                            beginAtZero: true
+                        }
+                    }
+                }
+            });
+        }
+
+        // Function to add date input
+        function addDateInput() {
+            const dateInputs = document.getElementById("dateInputs");
+            const newInput = document.createElement("input");
+            newInput.type = "date";
+            newInput.name = "preferred_dates[]";
+            newInput.required = true;
+            newInput.classList.add("date-input");
+            dateInputs.appendChild(newInput);
+        }
+
+        // Function to set timestamp
+        function setTimestamp() {
+            const timestampField = document.getElementById("timestamp");
+            const date = new Date();
+            const timestamp = date.toISOString().split('T')[0];
+            timestampField.value = timestamp;
+        }
+
+        // Function to submit the form asynchronously
+        function submitForm() {
+            setTimestamp(); // Set timestamp before form submission
+            const formData = new FormData(document.getElementById("scheduleForm"));
+
+            fetch('/submit', {
+                method: 'POST',
+                body: formData
+            })
+            .then(response => {
+                if (response.ok) {
+                    // Form submitted successfully, now update the summary table and dashboard
+                    updateSummary();
+                } else {
+                    console.error('Form submission failed');
+                }
+            })
+            .catch(error => {
+                console.error('Error:', error);
+            });
+
+            // Prevent default form submission behavior
+            return false;
+        }
+
+        // Function to update the summary table and dashboard
+        function updateSummary() {
+            fetch('/submit')
+            .then(response => response.json())
+            .then(data => {
+                const summaryTable = document.getElementById('summaryTable');
+                const dashboardData = {};
+                summaryTable.innerHTML = ''; // Clear existing table content
+
+                // Add table header
+                const headerRow = summaryTable.insertRow();
+                Object.keys(data[0]).forEach(key => {
+                    const headerCell = document.createElement("th");
+                    headerCell.textContent = key;
+                    headerRow.appendChild(headerCell);
+                });
+
+                // Add table rows and collect data for the dashboard
+                data.forEach(schedule => {
+                    const row = summaryTable.insertRow();
+                    Object.entries(schedule).forEach(([key, value], index) => {
+                        const cell = row.insertCell();
+                        if (index === Object.keys(schedule).length - 1) {
+                            // Add delete button to the last cell
+                            const deleteButton = document.createElement('button');
+                            deleteButton.textContent = 'Delete';
+                            deleteButton.classList.add('delete-button');
+                            deleteButton.onclick = function() {
+                                deleteSchedule(schedule.id);
+                            };
+                            cell.appendChild(deleteButton);
+                        } else {
+                            cell.textContent = value;
+                        }
+                        // Collect data for the dashboard
+                        if (key === 'Name') {
+                            dashboardData[value] = dashboardData[value] ? dashboardData[value] + 1 : 1;
+                        }
+                    });
+                });
+
+                // Update the calendar dashboard
+                updateCalendarDashboard(dashboardData);
+
+                // Create the bar chart dashboard
+                createChart(dashboardData);
+            })
+            .catch(error => {
+                console.error('Error updating summary:', error);
+            });
+        }
+
+        // Function to delete a schedule entry
+        function deleteSchedule(scheduleId) {
+            fetch(`/delete/${scheduleId}`, {
+                method: 'POST'
+            })
+            .then(response => {
+                if (response.ok) {
+                    // Schedule deleted successfully, now update the summary table and dashboard
+                    updateSummary();
+                } else {
+                    console.error('Failed to delete schedule');
+                }
+            })
+            .catch(error => {
+                console.error('Error:', error);
+            });
+        }
+
+        // Function to export data to CSV
+        function exportToCSV() {
+            fetch('/export_csv')
+            .then(response => {
+                if (response.ok) {
+                    return response.blob();
+                } else {
+                    console.error('Failed to export data to CSV');
+                }
+            })
+            .then(blob => {
+                // Create download link
+                const url = window.URL.createObjectURL(new Blob([blob]));
+                const a = document.createElement('a');
+                a.href = url;
+                a.download = 'schedule_data.csv';
+                document.body.appendChild(a);
+                a.click();
+                document.body.removeChild(a);
+                window.URL.revokeObjectURL(url);
+            })
+            .catch(error => {
+                console.error('Error exporting data to CSV:', error);
+            });
+        }
+
+        // Function to update the calendar dashboard
+        function updateCalendarDashboard(data) {
+            const calendarContainer = document.getElementById('calendarDashboard');
+            calendarContainer.innerHTML = ''; // Clear existing content
+
+            // Create the calendar grid
+            const currentDate = new Date();
+            const currentYear = currentDate.getFullYear();
+            const currentMonth = currentDate.getMonth();
+            const daysInMonth = new Date(currentYear, currentMonth + 1, 0).getDate();
+
+            // Show the current month and year
+            const monthYearHeader = document.createElement('h3');
+            monthYearHeader.textContent = new Date(currentYear, currentMonth).toLocaleString('default', { month: 'long', year: 'numeric' });
+            calendarContainer.appendChild(monthYearHeader);
+
+            // Create the navigation controls
+            const navigationControls = document.createElement('div');
+            navigationControls.classList.add('navigation-controls');
+            const prevButton = document.createElement('button');
+            prevButton.textContent = 'Previous Month';
+            prevButton.onclick = function() {
+                updateCalendar(currentYear, currentMonth - 1);
+            };
+            const nextButton = document.createElement('button');
+            nextButton.textContent = 'Next Month';
+            nextButton.onclick = function() {
+                updateCalendar(currentYear, currentMonth + 1);
+            };
+            navigationControls.appendChild(prevButton);
+            navigationControls.appendChild(nextButton);
+            calendarContainer.appendChild(navigationControls);
+
+            // Create the calendar grid
+            for (let i = 1; i <= daysInMonth; i++) {
+                const calendarDay = document.createElement('div');
+                calendarDay.classList.add('calendar-day');
+                calendarDay.textContent = i;
+
+                // Filter data for this specific day
+                const filteredData = Object.entries(data).filter(([name, count]) => {
+                    const scheduleDate = new Date(name.split(', ')[1]);
+                    return scheduleDate.getFullYear() === currentYear && scheduleDate.getMonth() === currentMonth && scheduleDate.getDate() === i;
+                });
+
+                // Add names to the calendar day
+                filteredData.forEach(([name, count]) => {
+                    const nameElement = document.createElement('div');
+                    nameElement.textContent = name.split(', ')[0] + ' (' + count + ')';
+                    calendarDay.appendChild(nameElement);
+                });
+
+                calendarContainer.appendChild(calendarDay);
+            }
+        }
+
+        // Function to update the calendar dashboard for a specific year and month
+        function updateCalendar(year, month) {
+            fetch('/submit')
+            .then(response => response.json())
+            .then(data => {
+                const filteredData = {};
+                data.forEach(schedule => {
+                    const scheduleDate = new Date(schedule['Timestamp']);
+                    if (scheduleDate.getFullYear() === year && scheduleDate.getMonth() === month) {
+                        const name = schedule['Name'];
+                        filteredData[name] = filteredData[name] ? filteredData[name] + 1 : 1;
+                    }
+                });
+                updateCalendarDashboard(filteredData);
+            })
+            .catch(error => {
+                console.error('Error updating calendar:', error);
+            });
+        }
+
+        // Initial update of the summary table and dashboard on page load
+        updateSummary();
+    </script>
+</head>
+<body>
+
+<div class="container">
+    <h1>Commercial Analytics RTO Dashboard</h1>
+    <form id="scheduleForm" method="post" action="/submit" onsubmit="return submitForm();">
+        <label for="name">Name:</label>
+        <select id="name" name="name" required>
+            <option value="">Select a name...</option>
+            <!-- Add options for names here -->
+            <option>Barcibal, Juliane</option>
+            <option>Cabiles, Joanna</option>
+            <option>Catacutan, Paula Rae</option>
+            <option>Catalan, Mary Rose</option>
+            <option>Co, Mark Anthony</option>
+            <option>Dela Pena, Princess</option>
+            <option>Manalo, Jacqueline</option>
+            <option>Mercado, Melizza Rose</option>
+            <option>Penamante, Jaziel L</option>
+            <option>Prepose, Kris Anelle</option>
+            <option>Sta. Teresa, Charmie</option>
+            <option>Tieng, Denver Nobel</option>
+            <option>Tribiano, Rommel</option>
+            <option>Tumamao, Jesusa Marie</option>
+            <option>Yangson, Soleil</option>
+        </select><br><br>
+        <label for="date">Preferred Dates of RTO:</label>
+        <div id="dateInputs">
+            <input type="date" name="preferred_dates[]" class="date-input" required>
+        </div>
+        <button type="button" onclick="addDateInput()">Add Date</button><br><br>
+        <input type="hidden" id="timestamp" name="timestamp">
+        <button type="submit">Submit</button>
+    </form>
+</div>
+
+<!-- Summary Table -->
+<h2>Summary Table</h2>
+<table border="1" class="container" id="summaryTable">
+    <thead>
+        <tr>
+            <th>Name</th>
+            <th>RTO Dates</th>
+            <th>Timestamp</th>
+            <th>Action</th>
+        </tr>
+    </thead>
+    <tbody>
+        <!-- This tbody will be populated dynamically by JavaScript -->
+    </tbody>
+</table>
+
+<!-- Export button for CSV -->
+<button class="export-button" onclick="exportToCSV()">Export to CSV</button>
+
+<!-- Dashboard -->
+<div class="container">
+    <h2>Calendar Dashboard</h2>
+    <div class="calendar-container" id="calendarDashboard">
+        <!-- Calendar days with names will be dynamically added here -->
+    </div>
+</div>
+
+<!-- Chart -->
+<div class="container">
+    <h2>Bar Chart Dashboard</h2>
+    <canvas id="dashboardChart"></canvas>
+</div>
+
+</body>
+</html>
