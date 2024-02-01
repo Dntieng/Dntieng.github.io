@@ -6,6 +6,8 @@ from datetime import datetime, timedelta
 from flask import Flask, render_template, request, redirect, url_for, jsonify, Response
 from flask_sqlalchemy import SQLAlchemy
 import logging
+import requests
+import base64
 
 # Initialize Flask app
 app = Flask(__name__)
@@ -43,10 +45,75 @@ def submit():
         schedule_entry = Schedule(name=name, schedule=', '.join(preferred_dates), timestamp=timestamp)
         db.session.add(schedule_entry)
         db.session.commit()
+        # After saving to the database, also save to GitHub
+        save_to_github()
         return redirect(url_for('index'))
     except Exception as e:
         app.logger.error(f"Error submitting data: {str(e)}")
         return "An error occurred while submitting data."
+
+# Function to save data to GitHub repository
+def save_to_github():
+    try:
+        # GitHub repository information
+        github_username = 'Dntieng'
+        repository_name = 'Dntieng.github.io'
+        branch_name = 'main'
+        file_path = 'data/schedule.csv'
+        commit_message = 'Update schedule.csv'
+
+        # GitHub API URL
+        url = f'https://api.github.com/repos/{github_username}/{repository_name}/contents/{file_path}'
+
+        # GitHub personal access token
+        access_token = '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'
+
+        # Data to be saved (fetch from the database)
+        schedules = Schedule.query.all()
+        rows = [['Name', 'Schedule', 'Timestamp']]
+        for schedule in schedules:
+            rows.append([schedule.name, schedule.schedule, schedule.timestamp.strftime('%Y-%m-%d %H:%M:%S')])
+
+        # Convert data to CSV format
+        csv_data = StringIO()
+        writer = csv.writer(csv_data)
+        writer.writerows(rows)
+
+        # Headers with authorization
+        headers = {
+            'Authorization': f'token {access_token}',
+            'Accept': 'application/vnd.github.v3+json'
+        }
+
+        # Check if file exists
+        response = requests.get(url, headers=headers)
+        if response.status_code == 200:
+            # File exists, update it
+            file_content = json.loads(response.content.decode('utf-8'))
+            file_content['content'] = base64.b64encode(csv_data.getvalue().encode()).decode()
+            payload = {
+                'message': commit_message,
+                'content': file_content['content'],
+                'branch': branch_name,
+                'sha': file_content['sha']
+            }
+            response = requests.put(url, headers=headers, json=payload)
+        else:
+            # File does not exist, create it
+            payload = {
+                'message': commit_message,
+                'content': base64.b64encode(csv_data.getvalue().encode()).decode(),
+                'branch': branch_name
+            }
+            response = requests.put(url, headers=headers, json=payload)
+
+        # Check response
+        if response.status_code == 200:
+            print('Data saved to GitHub successfully.')
+        else:
+            print('Failed to save data to GitHub.')
+    except Exception as e:
+        app.logger.error(f"Error saving data to GitHub: {str(e)}")
 
 # Other routes (export_csv, delete_schedule, get_calendar_data) remain unchanged
 
