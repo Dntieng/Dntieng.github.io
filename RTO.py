@@ -64,8 +64,10 @@ def save_to_github():
         # GitHub API URL
         url = f'https://api.github.com/repos/{github_username}/{repository_name}/contents/{file_path}'
 
-        # GitHub personal access token
-        access_token = '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'
+        # Retrieve GitHub personal access token from environment variables
+        access_token = os.environ.get('GITHUB_ACCESS_TOKEN')
+        if not access_token:
+            raise ValueError("GitHub access token not found in environment variables.")
 
         # Data to be saved (fetch from the database)
         schedules = Schedule.query.all()
@@ -107,7 +109,7 @@ def save_to_github():
             response = requests.put(url, headers=headers, json=payload)
 
         # Check response
-        if response.status_code == 200:
+        if response.status_code in [200, 201]:
             print('Data saved to GitHub successfully.')
         else:
             print('Failed to save data to GitHub.')
