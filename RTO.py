@@ -1,13 +1,12 @@
 import os
 import csv
-import calendar
 from io import StringIO
-from datetime import datetime, timedelta
-from flask import Flask, render_template, request, redirect, url_for, jsonify, Response
-from flask_sqlalchemy import SQLAlchemy
-import logging
+from datetime import datetime
 import requests
+import json
 import base64
+from flask import Flask, render_template, request, redirect, url_for
+from flask_sqlalchemy import SQLAlchemy
 
 # Initialize Flask app
 app = Flask(__name__)
@@ -66,7 +65,7 @@ def save_to_github():
         url = f'https://api.github.com/repos/{github_username}/{repository_name}/contents/{file_path}'
 
         # GitHub personal access token
-        access_token = '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'
+        access_token = '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'
 
         # Data to be saved (fetch from the database)
         schedules = Schedule.query.all()
@@ -112,10 +111,9 @@ def save_to_github():
             print('Data saved to GitHub successfully.')
         else:
             print('Failed to save data to GitHub.')
+            print(response.content)  # Print response content for debugging
     except Exception as e:
         app.logger.error(f"Error saving data to GitHub: {str(e)}")
-
-# Other routes (export_csv, delete_schedule, get_calendar_data) remain unchanged
 
 # Create database tables within application context
 with app.app_context():
