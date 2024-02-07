@@ -147,6 +147,7 @@
                             complete: function(results) {
                                 const data = results.data;
                                 createCalendar(currentDate.getFullYear(), currentDate.getMonth(), data);
+                                updateBarChart(data); // Call updateBarChart here to update the chart when new data is fetched
                             }
                         });
                     })
@@ -200,6 +201,40 @@
             function nextMonth() {
                 currentDate.setMonth(currentDate.getMonth() + 1);
                 fetchScheduleAndUpdateCalendar();
+            }
+
+            function updateBarChart(data) {
+                const employeeCounts = {};
+                data.forEach(entry => {
+                    const name = entry.Name;
+                    if (name in employeeCounts) {
+                        employeeCounts[name]++;
+                    } else {
+                        employeeCounts[name] = 1;
+                    }
+                });
+
+                const ctx = document.getElementById('dashboardChart').getContext('2d');
+                const barChart = new Chart(ctx, {
+                    type: 'bar',
+                    data: {
+                        labels: Object.keys(employeeCounts),
+                        datasets: [{
+                            label: 'Number of Appearances',
+                            data: Object.values(employeeCounts),
+                            backgroundColor: 'skyblue',
+                            borderColor: 'rgba(54, 162, 235, 1)',
+                            borderWidth: 1
+                        }]
+                    },
+                    options: {
+                        scales: {
+                            y: {
+                                beginAtZero: true
+                            }
+                        }
+                    }
+                });
             }
 
             document.getElementById('scheduleForm').addEventListener('submit', submitForm);
