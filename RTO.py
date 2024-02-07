@@ -65,7 +65,7 @@ def save_to_github():
         url = f'https://api.github.com/repos/{github_username}/{repository_name}/contents/{file_path}'
 
         # GitHub personal access token
-        access_token = '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'
+        access_token = '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'
 
         # Data to be saved (fetch from the database)
         schedules = Schedule.query.all()
