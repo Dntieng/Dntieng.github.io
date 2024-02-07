@@ -65,9 +65,15 @@ def save_to_github():
         url = f'https://api.github.com/repos/{github_username}/{repository_name}/contents/{file_path}'
 
         # Retrieve GitHub personal access token from environment variables
-        access_token = os.environ.get('GITHUB_ACCESS_TOKEN')
+        access_token = os.environ.get('ACCESS')
         if not access_token:
-            raise ValueError("GitHub access token not found in environment variables.")
+            raise ValueError("GitHub access token (ACCESS) not found in environment variables.")
+
+        # Headers with authorization
+        headers = {
+            'Authorization': f'token {access_token}',
+            'Accept': 'application/vnd.github.v3+json'
+        }
 
         # Data to be saved (fetch from the database)
         schedules = Schedule.query.all()
@@ -79,12 +85,6 @@ def save_to_github():
         csv_data = StringIO()
         writer = csv.writer(csv_data)
         writer.writerows(rows)
-
-        # Headers with authorization
-        headers = {
-            'Authorization': f'token {access_token}',
-            'Accept': 'application/vnd.github.v3+json'
-        }
 
         # Check if file exists
         response = requests.get(url, headers=headers)
@@ -98,7 +98,7 @@ def save_to_github():
                 'branch': branch_name,
                 'sha': file_content['sha']
             }
-            response = requests.put(url, headers=headers, json=payload)
+            response = requests.put(url, headers=headers, data=json.dumps(payload))
         else:
             # File does not exist, create it
             payload = {
@@ -106,7 +106,7 @@ def save_to_github():
                 'content': base64.b64encode(csv_data.getvalue().encode()).decode(),
                 'branch': branch_name
             }
-            response = requests.put(url, headers=headers, json=payload)
+            response = requests.put(url, headers=headers, data=json.dumps(payload))
 
         # Check response
         if response.status_code in [200, 201]:
