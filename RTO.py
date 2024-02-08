@@ -1,5 +1,8 @@
 import os
 import yaml
+import requests  # Ensure requests is imported
+import json  # Ensure json is imported
+import base64
 from datetime import datetime
 from flask import Flask, render_template, request, redirect, url_for
 from flask_sqlalchemy import SQLAlchemy
@@ -52,10 +55,11 @@ def submit():
         return "An error occurred while submitting data."
 
 def save_to_github(schedule_entry):
-    # Access the GitHub token from the YAML configuration if available, else from environment variable
-    github_token = config.get('github', {}).get('token', os.environ.get('GITHUB_TOKEN'))
-    if not github_token:
-        raise ValueError("GitHub token not found. Please set the GITHUB_TOKEN environment variable or configure it in config.yaml."
+    try:
+        # Access the GitHub token from the YAML configuration if available, else from environment variable
+        github_token = config.get('github', {}).get('token', os.environ.get('GITHUB_TOKEN'))
+        if not github_token:
+            raise ValueError("GitHub token not found. Please set the GITHUB_TOKEN environment variable or configure it in config.yaml.")
 
         github_username = 'Dntieng'
         repository_name = 'Dntieng.github.io'
