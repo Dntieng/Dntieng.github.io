@@ -30,7 +30,7 @@ jobs:
     - name: Run Python Script
       run: python python RTO.py
       env:
-        SECRET_KEY: ${{ secrets.ACCESS }}
+        SECRET_KEY: ${{ secrets.SECRET_KEY }}
 
         
 
