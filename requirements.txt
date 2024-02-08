@@ -1,1 +1,6 @@
 pip freeze > requirements.txt
+pip install --upgrade pip
+Flask==2.1.2
+Flask-SQLAlchemy==2.5.1
+requests==2.27.1
+gunicorn==20.1.0
