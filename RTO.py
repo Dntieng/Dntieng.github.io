@@ -7,7 +7,6 @@ import json
 import base64
 from flask import Flask, render_template, request, redirect, url_for
 from flask_sqlalchemy import SQLAlchemy
-import yaml
 
 app = Flask(__name__)
 
@@ -55,17 +54,15 @@ def submit():
 def save_to_github():
     try:
         # GitHub repository information
-        github_username = 'Dntieng'
-        repository_name = 'Dntieng.github.io'
+        github_username = os.environ.get('GITHUB_USERNAME', 'Dntieng')
+        repository_name = os.environ.get('GITHUB_REPOSITORY', 'Dntieng.github.io')
         branch_name = 'main'
         file_path = 'data/schedule.csv'
         commit_message = 'Update schedule.csv'
-
+        access_token = os.environ.get('ACCESS')  # Make sure this is set in your environment
+        print(access_token)
         # GitHub API URL
         url = f'https://api.github.com/repos/{github_username}/{repository_name}/contents/{file_path}'
-
-        # GitHub personal access token
-        access_token = os.environ.get('ACCESS')
 
         # Data to be saved (fetch from the database)
         schedules = Schedule.query.all()
@@ -89,29 +86,31 @@ def save_to_github():
         if response.status_code == 200:
             # File exists, update it
             file_content = json.loads(response.content.decode('utf-8'))
-            file_content['content'] = base64.b64encode(csv_data.getvalue().encode()).decode()
+            file_sha = file_content['sha']
+            # Encode CSV data to base64
+            base64_content = base64.b64encode(csv_data.getvalue().encode()).decode()
             payload = {
                 'message': commit_message,
-                'content': file_content['content'],
+                'content': base64_content,
                 'branch': branch_name,
-                'sha': file_content['sha']
+                'sha': file_sha
             }
             response = requests.put(url, headers=headers, json=payload)
         else:
             # File does not exist, create it
+            base64_content = base64.b64encode(csv_data.getvalue().encode()).decode()
             payload = {
                 'message': commit_message,
-                'content': base64.b64encode(csv_data.getvalue().encode()).decode(),
+                'content': base64_content,
                 'branch': branch_name
             }
             response = requests.put(url, headers=headers, json=payload)
 
         # Check response
-        if response.status_code == 200:
+        if response.status_code in [200, 201]:
             print('Data saved to GitHub successfully.')
         else:
-            print('Failed to save data to GitHub.')
-            print(response.content)  # Print response content for debugging
+            print(f'Failed to save data to GitHub. Status: {response.status_code}, Response: {response.content}')
     except Exception as e:
         app.logger.error(f"Error saving data to GitHub: {str(e)}")
 
@@ -119,8 +118,4 @@ def save_to_github():
 with app.app_context():
     db.create_all()
 
-# Run the app
-if __name__ == "__main__":
-    # Use PORT provided by Heroku's environment variables
-    port = int(os.environ.get('PORT', 5000))
-    app.run(host='0.0.0.0', port=port)
+
