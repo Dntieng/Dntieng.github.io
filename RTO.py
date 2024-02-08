@@ -13,7 +13,7 @@ app = Flask(__name__)
 # Configure SQLAlchemy for database management
 app.config['SQLALCHEMY_DATABASE_URI'] = os.environ.get('DATABASE_URL', 'sqlite:///schedule.db')
 app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
-app.config['SECRET_KEY'] = os.environ.get('SECRET_KEY', 'your_secret_key_here')
+app.config['ACCESS'] = os.environ.get('ACCESS', 'your_secret_key_here')
 
 # Initialize SQLAlchemy database instance
 db = SQLAlchemy(app)
