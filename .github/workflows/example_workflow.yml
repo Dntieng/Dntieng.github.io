@@ -28,7 +28,7 @@ jobs:
         pip install PyYAML requests Flask SQLAlchemy
 
     - name: Run Python Script
-      run: python python RTO.py
+      run: python RTO.py
       env:
         SECRET_KEY: ${{ secrets.SECRET_KEY }}
 
