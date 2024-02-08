@@ -14,9 +14,8 @@ jobs:
     - name: Checkout Repository
       uses: actions/checkout@v2
       with:
-        token: ${{ secrets.access }}
+        token: ${{ secrets.ACCESS }}
 
-    # Example step to run your Python script
     - name: Set up Python
       uses: actions/setup-python@v2
       with:
@@ -27,11 +26,13 @@ jobs:
         python -m pip install --upgrade pip
         pip install PyYAML requests Flask SQLAlchemy flask_sqlalchemy
 
+    - name: Set up configuration file
+      run: |
+        echo "flask:" > config.yaml
+        echo "  secret_key: '${{ secrets.SECRET_KEY }}'" >> config.yaml
+        echo "  database_url: '${{ secrets.DATABASE_URL }}'" >> config.yaml
+        echo "github:" >> config.yaml
+        echo "  token: '${{ secrets.ACCESS }}'" >> config.yaml
+
     - name: Run Python Script
       run: python RTO.py
-      env:
-        SECRET_KEY: ${{ secrets.SECRET_KEY }}
-        ACCESS: ${{ secrets.ACCESS }}
-
-        
-
