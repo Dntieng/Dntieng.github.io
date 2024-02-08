@@ -22,6 +22,8 @@ jobs:
       run: |
         pip install Flask-SQLAlchemy
         pip install requests
+        pip install -r requirements.txt
+        pip install PyYAML
 
     - name: Run Python script
       env:
