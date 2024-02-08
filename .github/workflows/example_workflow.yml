@@ -21,6 +21,7 @@ jobs:
     - name: Install dependencies
       run: |
         pip install Flask-SQLAlchemy
+        pip insall requests
 
     - name: Run Python script
       env:
