@@ -25,6 +25,14 @@ jobs:
         pip install PyYAML
         pip install --upgrade pip
 
+    - name: Print Environment Variable
+      run: echo "Path is $PATH"
+
+    - name: Debug environment variables
+      run: |
+        echo "Listing environment variable keys:"
+        python -c "import os; print(list(os.environ.keys()))"
+        
     - name: Run Python script
       env:
         ACCESS: ${{ secrets.ACCESS }}  # Use your secret name here
