@@ -1,0 +1,5 @@
+flask:
+  secret_key: "your_secret_key_here"
+  database_url: "sqlite:///schedule.db"
+github:
+  token: "your_github_token_here"
