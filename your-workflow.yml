@@ -23,3 +23,10 @@ jobs:
         ACCESS_CODE: ${{ secrets.ACCESS_CODE }}
       run: |
         python your-script.py
+
+- name: Install dependencies
+  run: pip install -r requirements.txt
+
+- name: Upgrade pip
+  run: pip install --upgrade pip
+
