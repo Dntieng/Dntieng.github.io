@@ -24,4 +24,4 @@ jobs:
     - name: Run Python script
       env:
         ACCESS: ${{ secrets.ACCESS }}  # Use your secret name here
-      run: python your_script.py
+      run: python RTO.py
