@@ -1,7 +1,7 @@
 import os
 import yaml
-import requests  # Ensure requests is imported
-import json  # Ensure json is imported
+import requests
+import json
 import base64
 from datetime import datetime
 from flask import Flask, render_template, request, redirect, url_for
@@ -9,18 +9,37 @@ from flask_sqlalchemy import SQLAlchemy
 
 app = Flask(__name__)
 
-# Load configuration from YAML file
-config_path = 'config.yaml'
-if os.path.exists(config_path):
-    with open(config_path, 'r') as file:
-        config = yaml.safe_load(file)
-    app.config['SQLALCHEMY_DATABASE_URI'] = config['flask']['database_url']
-    app.config['SECRET_KEY'] = config['flask']['secret_key']
-else:
-    # Fallback configurations if config.yaml is not found
-    app.config['SQLALCHEMY_DATABASE_URI'] = os.environ.get('DATABASE_URL', 'sqlite:///schedule.db')
-    app.config['SECRET_KEY'] = os.environ.get('SECRET_KEY', 'fallback_secret_key')
+# Define a function to load configurations
+def load_configurations():
+    config_path = 'config.yaml'
+    default_config = {
+        'flask': {
+            'database_url': 'sqlite:///schedule.db',
+            'secret_key': 'fallback_secret_key',
+        },
+        'github': {
+            'token': os.environ.get('GITHUB_TOKEN', ''),
+            'username': 'Dntieng',
+            'repository_name': 'Dntieng.github.io',
+            'branch_name': 'main',
+            'file_path': 'data/schedule.csv',
+        }
+    }
 
+    if os.path.exists(config_path):
+        with open(config_path, 'r') as file:
+            config = yaml.safe_load(file)
+    else:
+        print(f"No config.yaml found. Using default configurations.")
+        config = default_config
+
+    return config
+
+config = load_configurations()
+
+# Set Flask configurations
+app.config['SQLALCHEMY_DATABASE_URI'] = config['flask']['database_url']
+app.config['SECRET_KEY'] = config['flask']['secret_key']
 app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
 
 db = SQLAlchemy(app)
@@ -56,19 +75,12 @@ def submit():
 
 def save_to_github(schedule_entry):
     try:
-        # Access the GitHub token from the YAML configuration if available, else from environment variable
-        github_token = config.get('github', {}).get('token', os.environ.get('GITHUB_TOKEN'))
-        if not github_token:
-            raise ValueError("GitHub token not found. Please set the GITHUB_TOKEN environment variable or configure it in config.yaml.")
-
-        github_username = 'Dntieng'
-        repository_name = 'Dntieng.github.io'
-        branch_name = 'main'
-        file_path = 'data/schedule.csv'
-        commit_message = 'Update schedule.csv'
-
-        url = f'https://api.github.com/repos/{github_username}/{repository_name}/contents/{file_path}'
-        headers = {'Authorization': f'token {github_token}', 'Accept': 'application/vnd.github.v3+json'}
+        github_config = config['github']
+        url = f"https://api.github.com/repos/{github_config['username']}/{github_config['repository_name']}/contents/{github_config['file_path']}"
+        headers = {
+            'Authorization': f"token {github_config['token']}",
+            'Accept': 'application/vnd.github.v3+json'
+        }
 
         response = requests.get(url, headers=headers)
         if response.status_code == 200:
@@ -78,9 +90,9 @@ def save_to_github(schedule_entry):
             updated_content = content_decoded + new_row
             updated_encoded_content = base64.b64encode(updated_content.encode()).decode()
             payload = {
-                'message': commit_message,
+                'message': 'Update schedule.csv',
                 'content': updated_encoded_content,
-                'branch': branch_name,
+                'branch': github_config['branch_name'],
                 'sha': file_content['sha']
             }
             update_response = requests.put(url, headers=headers, json=payload)
@@ -95,7 +107,6 @@ def save_to_github(schedule_entry):
 with app.app_context():
     db.create_all()
 
-# Main entry
 if __name__ == "__main__":
     port = int(os.environ.get('PORT', 5000))
     app.run(host='0.0.0.0', port=port)
