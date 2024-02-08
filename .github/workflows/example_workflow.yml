@@ -1,0 +1,18 @@
+name: Example Workflow
+
+on:
+  push:
+    branches:
+      - main
+
+jobs:
+  example_job:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v2
+
+      - name: Use the GitHub Token
+        env:
+          GITHUB_TOKEN: ${{ secrets.ACCESS }}
+        run: echo $ACCESS  # Example of using the token in a step
