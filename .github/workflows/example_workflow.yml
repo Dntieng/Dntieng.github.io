@@ -4,40 +4,33 @@ on:
   push:
     branches:
       - main
+  schedule:
+    - cron: '0 0 * * *' # Scheduled to run daily at midnight
 
 jobs:
-  build:
+  update_file:
     runs-on: ubuntu-latest
-
     steps:
-    - name: Checkout code
+    - name: Checkout Repository
       uses: actions/checkout@v2
+      with:
+        token: ${{ secrets.access }}
 
+    # Example step to run your Python script
     - name: Set up Python
       uses: actions/setup-python@v2
       with:
-        python-version: '3.x'
+        python-version: '3.8'
 
     - name: Install dependencies
       run: |
-        pip install Flask-SQLAlchemy
-        pip install requests
-        pip install PyYAML
-        pip install --upgrade pip
+        python -m pip install --upgrade pip
+        pip install PyYAML requests Flask SQLAlchemy
 
-    - name: Print Environment Variable
-      run: echo "Path is $PATH"
-
-    - name: Debug environment variables
-      run: |
-        echo "Listing environment variable keys:"
-        python -c "import os; print(list(os.environ.keys()))"
-
-    - name: Print dummy secret
-      run: |
-        echo "TEST_SECRET=${{ secrets.TEST_SECRET }}"
-        
-    - name: Run Python script
+    - name: Run Python Script
+      run: python python RTO.py
       env:
-        ACCESS: ${{ secrets.ACCESS }}  # Use your secret name here
-      run: python RTO.py
+        SECRET_KEY: ${{ secrets.ACCESS }}
+
+        
+
