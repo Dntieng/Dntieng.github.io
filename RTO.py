@@ -13,7 +13,7 @@ app = Flask(__name__)
 # Configure SQLAlchemy for database management
 app.config['SQLALCHEMY_DATABASE_URI'] = os.environ.get('DATABASE_URL', 'sqlite:///schedule.db')
 app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
-app.config['ACCESS'] = os.environ.get('ACCESS', 'your_secret_key_here')
+app.config['SECRET_KEY'] = os.environ.get('SECRET_KEY', 'your_secret_key_here')
 
 # Initialize SQLAlchemy database instance
 db = SQLAlchemy(app)
@@ -60,7 +60,6 @@ def save_to_github():
         file_path = 'data/schedule.csv'
         commit_message = 'Update schedule.csv'
         access_token = os.environ.get('ACCESS')  # Make sure this is set in your environment
-        print(access_token)
         # GitHub API URL
         url = f'https://api.github.com/repos/{github_username}/{repository_name}/contents/{file_path}'
 
