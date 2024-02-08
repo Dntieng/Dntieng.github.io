@@ -28,11 +28,13 @@ jobs:
 
     - name: Set up configuration file
       run: |
-        echo "flask:" > config.yaml
-        echo "  secret_key: '${{ secrets.SECRET_KEY }}'" >> config.yaml
-        echo "  database_url: '${{ secrets.DATABASE_URL }}'" >> config.yaml
-        echo "github:" >> config.yaml
-        echo "  token: '${{ secrets.ACCESS }}'" >> config.yaml
+        cat << EOF > config.yaml
+        flask:
+          secret_key: "${{ secrets.SECRET_KEY }}"
+          database_url: "${{ secrets.DATABASE_URL }}"
+        github:
+          token: "${{ secrets.ACCESS }}"
+        EOF
 
     - name: Run Python Script
       run: python RTO.py
