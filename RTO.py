@@ -10,22 +10,21 @@ from flask_sqlalchemy import SQLAlchemy
 
 app = Flask(__name__)
 
-# Configure SQLAlchemy for database management
+# Configuration
 app.config['SQLALCHEMY_DATABASE_URI'] = os.environ.get('DATABASE_URL', 'sqlite:///schedule.db')
 app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
 app.config['SECRET_KEY'] = os.environ.get('SECRET_KEY', 'your_secret_key_here')
 
-# Initialize SQLAlchemy database instance
 db = SQLAlchemy(app)
 
-# Define Schedule model
+# Models
 class Schedule(db.Model):
     id = db.Column(db.Integer, primary_key=True)
     name = db.Column(db.String(100), nullable=False)
     schedule = db.Column(db.String(200), nullable=False)
     timestamp = db.Column(db.DateTime, nullable=False, default=datetime.now)
 
-# Define routes
+# Routes
 @app.route('/')
 def index():
     schedules = Schedule.query.all()
@@ -43,78 +42,55 @@ def submit():
         schedule_entry = Schedule(name=name, schedule=', '.join(preferred_dates), timestamp=timestamp)
         db.session.add(schedule_entry)
         db.session.commit()
-        # After saving to the database, also save to GitHub
-        save_to_github()
+        save_to_github(schedule_entry)
         return redirect(url_for('index'))
     except Exception as e:
         app.logger.error(f"Error submitting data: {str(e)}")
         return "An error occurred while submitting data."
 
-# Function to save data to GitHub repository
-def save_to_github():
+# Helper functions
+def save_to_github(schedule_entry):
     try:
-        # GitHub repository information
-        github_username = os.environ.get('GITHUB_USERNAME', 'Dntieng')
-        repository_name = os.environ.get('GITHUB_REPOSITORY', 'Dntieng.github.io')
+        # Fetch the GitHub token from an environment variable
+        access_token = os.environ.get('ACCESS')
+        if not access_token:
+            raise ValueError("GitHub token not found. Please set the GITHUB_TOKEN environment variable.")
+
+        github_username = 'Dntieng'
+        repository_name = 'Dntieng.github.io'
         branch_name = 'main'
         file_path = 'data/schedule.csv'
         commit_message = 'Update schedule.csv'
-        access_token = os.environ.get('ACCESS')  # Make sure this is set in your environment
-        # GitHub API URL
+
         url = f'https://api.github.com/repos/{github_username}/{repository_name}/contents/{file_path}'
+        headers = {'Authorization': f'token {access_token}', 'Accept': 'application/vnd.github.v3+json'}
 
-        # Data to be saved (fetch from the database)
-        schedules = Schedule.query.all()
-        rows = [['Name', 'Schedule', 'Timestamp']]
-        for schedule in schedules:
-            rows.append([schedule.name, schedule.schedule, schedule.timestamp.strftime('%Y-%m-%d %H:%M:%S')])
-
-        # Convert data to CSV format
-        csv_data = StringIO()
-        writer = csv.writer(csv_data)
-        writer.writerows(rows)
-
-        # Headers with authorization
-        headers = {
-            'Authorization': f'token {access_token}',
-            'Accept': 'application/vnd.github.v3+json'
-        }
-
-        # Check if file exists
         response = requests.get(url, headers=headers)
         if response.status_code == 200:
-            # File exists, update it
             file_content = json.loads(response.content.decode('utf-8'))
-            file_sha = file_content['sha']
-            # Encode CSV data to base64
-            base64_content = base64.b64encode(csv_data.getvalue().encode()).decode()
+            content_decoded = base64.b64decode(file_content['content']).decode('utf-8')
+            new_row = f"{schedule_entry.name},{schedule_entry.schedule},{schedule_entry.timestamp.strftime('%Y-%m-%d %H:%M:%S')}\n"
+            updated_content = content_decoded + new_row
+            updated_encoded_content = base64.b64encode(updated_content.encode()).decode()
             payload = {
                 'message': commit_message,
-                'content': base64_content,
+                'content': updated_encoded_content,
                 'branch': branch_name,
-                'sha': file_sha
+                'sha': file_content['sha']
             }
-            response = requests.put(url, headers=headers, json=payload)
+            update_response = requests.put(url, headers=headers, json=payload)
+            if update_response.status_code not in [200, 201]:
+                app.logger.error('Failed to update data on GitHub.')
         else:
-            # File does not exist, create it
-            base64_content = base64.b64encode(csv_data.getvalue().encode()).decode()
-            payload = {
-                'message': commit_message,
-                'content': base64_content,
-                'branch': branch_name
-            }
-            response = requests.put(url, headers=headers, json=payload)
-
-        # Check response
-        if response.status_code in [200, 201]:
-            print('Data saved to GitHub successfully.')
-        else:
-            print(f'Failed to save data to GitHub. Status: {response.status_code}, Response: {response.content}')
+            app.logger.error('Failed to fetch existing data from GitHub.')
     except Exception as e:
         app.logger.error(f"Error saving data to GitHub: {str(e)}")
 
-# Create database tables within application context
+# Initialize database
 with app.app_context():
     db.create_all()
 
-
+# Main entry
+if __name__ == "__main__":
+    port = int(os.environ.get('PORT', 5000))
+    app.run(host='0.0.0.0', port=port)
