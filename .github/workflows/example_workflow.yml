@@ -19,7 +19,8 @@ jobs:
         python-version: '3.x'
 
     - name: Install dependencies
-      run: pip install Flask requests PyYAML
+      run: |
+        pip install Flask-SQLAlchemy
 
     - name: Run Python script
       env:
