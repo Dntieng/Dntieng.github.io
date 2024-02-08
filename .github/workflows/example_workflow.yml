@@ -32,6 +32,10 @@ jobs:
       run: |
         echo "Listing environment variable keys:"
         python -c "import os; print(list(os.environ.keys()))"
+
+    - name: Print dummy secret
+      run: |
+        echo "TEST_SECRET=${{ secrets.TEST_SECRET }}"
         
     - name: Run Python script
       env:
