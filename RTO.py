@@ -1,30 +1,33 @@
 import os
-import csv
-from io import StringIO
+import yaml
 from datetime import datetime
-import requests
-import json
-import base64
 from flask import Flask, render_template, request, redirect, url_for
 from flask_sqlalchemy import SQLAlchemy
 
 app = Flask(__name__)
 
-# Configuration
-app.config['SQLALCHEMY_DATABASE_URI'] = os.environ.get('DATABASE_URL', 'sqlite:///schedule.db')
+# Load configuration from YAML file
+config_path = 'config.yaml'
+if os.path.exists(config_path):
+    with open(config_path, 'r') as file:
+        config = yaml.safe_load(file)
+    app.config['SQLALCHEMY_DATABASE_URI'] = config['flask']['database_url']
+    app.config['SECRET_KEY'] = config['flask']['secret_key']
+else:
+    # Fallback configurations if config.yaml is not found
+    app.config['SQLALCHEMY_DATABASE_URI'] = os.environ.get('DATABASE_URL', 'sqlite:///schedule.db')
+    app.config['SECRET_KEY'] = os.environ.get('SECRET_KEY', 'fallback_secret_key')
+
 app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
-app.config['SECRET_KEY'] = os.environ.get('SECRET_KEY', 'your_secret_key_here')
 
 db = SQLAlchemy(app)
 
-# Models
 class Schedule(db.Model):
     id = db.Column(db.Integer, primary_key=True)
     name = db.Column(db.String(100), nullable=False)
     schedule = db.Column(db.String(200), nullable=False)
     timestamp = db.Column(db.DateTime, nullable=False, default=datetime.now)
 
-# Routes
 @app.route('/')
 def index():
     schedules = Schedule.query.all()
@@ -48,13 +51,11 @@ def submit():
         app.logger.error(f"Error submitting data: {str(e)}")
         return "An error occurred while submitting data."
 
-# Helper functions
 def save_to_github(schedule_entry):
-    try:
-        # Fetch the GitHub token from an environment variable
-        access_token = os.environ.get('ACCESS')
-        if not access_token:
-            raise ValueError("GitHub token not found. Please set the GITHUB_TOKEN environment variable.")
+    # Access the GitHub token from the YAML configuration if available, else from environment variable
+    github_token = config.get('github', {}).get('token', os.environ.get('GITHUB_TOKEN'))
+    if not github_token:
+        raise ValueError("GitHub token not found. Please set the GITHUB_TOKEN environment variable or configure it in config.yaml."
 
         github_username = 'Dntieng'
         repository_name = 'Dntieng.github.io'
@@ -63,7 +64,7 @@ def save_to_github(schedule_entry):
         commit_message = 'Update schedule.csv'
 
         url = f'https://api.github.com/repos/{github_username}/{repository_name}/contents/{file_path}'
-        headers = {'Authorization': f'token {access_token}', 'Accept': 'application/vnd.github.v3+json'}
+        headers = {'Authorization': f'token {github_token}', 'Accept': 'application/vnd.github.v3+json'}
 
         response = requests.get(url, headers=headers)
         if response.status_code == 200:
