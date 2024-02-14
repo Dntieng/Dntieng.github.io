@@ -5,7 +5,6 @@ import json
 import base64
 from datetime import datetime
 from flask import Flask, render_template, request, redirect, url_for
-from flask_sqlalchemy import SQLAlchemy
 
 app = Flask(__name__)
 
@@ -14,7 +13,6 @@ def load_configurations():
     config_path = 'config.yaml'
     default_config = {
         'flask': {
-            'database_url': 'sqlite:///schedule.db',
             'secret_key': 'fallback_secret_key',
         },
         'github': {
@@ -38,25 +36,13 @@ def load_configurations():
 config = load_configurations()
 
 # Set Flask configurations
-app.config['SQLALCHEMY_DATABASE_URI'] = config['flask']['database_url']
 app.config['SECRET_KEY'] = config['flask']['secret_key']
-app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
-
-db = SQLAlchemy(app)
-
-class Schedule(db.Model):
-    id = db.Column(db.Integer, primary_key=True)
-    name = db.Column(db.String(100), nullable=False)
-    schedule = db.Column(db.String(200), nullable=False)
-    timestamp = db.Column(db.DateTime, nullable=False, default=datetime.now)
 
 @app.route('/')
 def index():
-    schedules = Schedule.query.all()
-    names_count = {}
-    for schedule in schedules:
-        names_count[schedule.name] = names_count.get(schedule.name, 0) + 1
-    return render_template('index.html', schedules=schedules, names_count=names_count)
+    # This route can still display the form for submitting schedule entries
+    # You might want to fetch the current content of `schedule.csv` from GitHub to display it
+    return render_template('index.html')
 
 @app.route('/submit', methods=['POST'])
 def submit():
@@ -64,9 +50,7 @@ def submit():
         name = request.form['name']
         preferred_dates = request.form.getlist('preferred_dates[]')
         timestamp = datetime.now()
-        schedule_entry = Schedule(name=name, schedule=', '.join(preferred_dates), timestamp=timestamp)
-        db.session.add(schedule_entry)
-        db.session.commit()
+        schedule_entry = f"{name},{', '.join(preferred_dates)},{timestamp.strftime('%Y-%m-%d %H:%M:%S')}\n"
         save_to_github(schedule_entry)
         return redirect(url_for('index'))
     except Exception as e:
@@ -86,8 +70,7 @@ def save_to_github(schedule_entry):
         if response.status_code == 200:
             file_content = json.loads(response.content.decode('utf-8'))
             content_decoded = base64.b64decode(file_content['content']).decode('utf-8')
-            new_row = f"{schedule_entry.name},{schedule_entry.schedule},{schedule_entry.timestamp.strftime('%Y-%m-%d %H:%M:%S')}\n"
-            updated_content = content_decoded + new_row
+            updated_content = content_decoded + schedule_entry
             updated_encoded_content = base64.b64encode(updated_content.encode()).decode()
             payload = {
                 'message': 'Update schedule.csv',
@@ -102,10 +85,6 @@ def save_to_github(schedule_entry):
             app.logger.error('Failed to fetch existing data from GitHub.')
     except Exception as e:
         app.logger.error(f"Error saving data to GitHub: {str(e)}")
-
-# Initialize database
-with app.app_context():
-    db.create_all()
 
 if __name__ == "__main__":
     port = int(os.environ.get('PORT', 5000))
