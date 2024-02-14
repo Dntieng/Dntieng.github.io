@@ -85,7 +85,3 @@ def save_to_github(schedule_entry):
             app.logger.error('Failed to fetch existing data from GitHub.')
     except Exception as e:
         app.logger.error(f"Error saving data to GitHub: {str(e)}")
-
-if __name__ == "__main__":
-    port = int(os.environ.get('PORT', 5000))
-    app.run(host='0.0.0.0', port=port)
