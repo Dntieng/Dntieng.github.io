@@ -99,7 +99,8 @@
                 timestampInput.value = now;
             }
 
-            function submitForm() {
+            function submitForm(event) {
+                event.preventDefault(); // Prevent the default form submission
                 setTimestamp();
                 const formData = new FormData(document.getElementById("scheduleForm"));
 
