@@ -116,7 +116,7 @@
                 })
                 .then(data => {
                     console.log(data); // You can handle the response data here
-                    updateSummary(); // Update summary if needed
+                    window.location.href = '/'; // Update summary if needed
                 })
                 .catch(error => {
                     console.error('Error submitting form:', error);
