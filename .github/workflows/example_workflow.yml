@@ -11,30 +11,37 @@ jobs:
   update_file:
     runs-on: ubuntu-latest
     steps:
-    - name: Checkout Repository
-      uses: actions/checkout@v2
-      with:
-        token: ${{ secrets.ACCESS }}
+      - name: Checkout Repository
+        uses: actions/checkout@v3 # Updated to the latest version
+        with:
+          token: ${{ secrets.ACCESS }}
 
-    - name: Set up Python
-      uses: actions/setup-python@v2
-      with:
-        python-version: '3.8'
+      - name: Set up Python
+        uses: actions/setup-python@v3 # Updated to the latest version
+        with:
+          python-version: '3.8'
 
-    - name: Install dependencies
-      run: |
-        python -m pip install --upgrade pip
-        pip install PyYAML requests Flask SQLAlchemy flask_sqlalchemy
+      - name: Cache Python dependencies
+        uses: actions/cache@v3
+        with:
+          path: ~/.cache/pip
+          key: ${{ runner.os }}-pip-${{ hashFiles('**/requirements.txt') }}
+          restore-keys: |
+            ${{ runner.os }}-pip-
 
-    - name: Set up configuration file
-      run: |
-        cat << EOF > config.yaml
-        flask:
-          secret_key: "${{ secrets.SECRET_KEY }}"
-          database_url: "${{ secrets.DATABASE_URL }}"
-        github:
-          token: "${{ secrets.ACCESS }}"
-        EOF
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install requests Flask # Updated to remove unnecessary dependencies
 
-    - name: Run Python Script
-      run: python RTO.py
+      - name: Set up configuration file
+        run: |
+          cat << EOF > config.yaml
+          flask:
+            secret_key: "${{ secrets.SECRET_KEY }}"
+          github:
+            token: "${{ secrets.ACCESS }}"
+          EOF
+
+      - name: Run Python Script
+        run: python RTO.py
