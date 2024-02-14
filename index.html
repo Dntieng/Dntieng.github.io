@@ -101,6 +101,7 @@
 
             function submitForm(event) {
                 event.preventDefault(); // Prevent the default form submission
+                console.log('Form is being submitted');
                 setTimestamp();
                 const formData = new FormData(document.getElementById("scheduleForm"));
 
@@ -252,7 +253,7 @@
 
     <div class="container">
         <h1>PES RTO Dashboard</h1>
-        <form id="scheduleForm" method="POST" action="/submit" onsubmit="return submitForm();">
+        <form id="scheduleForm" method="POST" action="/submit">
             <label for="name">Name:</label>
             <select id="name" name="name" required>
                 <option value="">Select a name...</option>
